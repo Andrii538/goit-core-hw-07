@@ -1,2 +1,1 @@
-goit-algo-hw-06
-Homework №6 for GoIT school
+Homework №7 for GoIT school
