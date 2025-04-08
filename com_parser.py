@@ -11,7 +11,7 @@ def input_error(error_message):
             except KeyError:
                 return 'Name is not in contact list'
             except AttributeError:
-                return 'No info find'
+                return 'Info not found'
             except IndexError:
                 return error_message
         return inner
@@ -55,6 +55,8 @@ def contact_delete(args, book: AddressBook):
     
 
 def show_all(book: AddressBook):
+    if not book:
+        return "Records not found"
     return book
 
 
@@ -77,10 +79,12 @@ def add_birthday(args, book: AddressBook):
 def show_birthday(args, book: AddressBook):
     name, = args
     record = book.find(name)
-    return Birthday.date_to_string(record.birthday.value)
+    return record.birthday.value
 
 
 def birthdays(book: AddressBook):
     birthday = book.get_upcoming_birthdays()
+    if not birthday:
+        return "No birthdays found"
     return '\n'.join(f'{item["name"]} -- {item["birthday"]}' for item in  birthday)
 

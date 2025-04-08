@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, date
-
 from collections import UserDict
 
 
@@ -24,31 +23,33 @@ class Phone(Field):
 
 class Birthday(Field):
     def __init__(self, value: str):
+        if not self.isvalid(value):
+            raise ValueError
         super().__init__(value)
-        try:
-            self.value = self.string_to_date(value)
-        except ValueError:
-            raise ValueError("Invalid date format. Use DD.MM.YYYY")
 
-    def string_to_date(self, value: str) -> date:
-        """Перетворює дату у форматі 'DD.MM.YYYY' у об'єкт datetime.date."""
+    @staticmethod
+    def isvalid(value: str) -> bool:
+        try:
+            datetime.strptime(value, "%d.%m.%Y")
+            return True
+        except ValueError:
+            return False
+
+    def string_to_date(value: str) -> date:
         return datetime.strptime(value, "%d.%m.%Y").date()
 
     def date_to_string(date_obj: date) -> str:
-        """Перетворює дату у форматі datetime.date в рядок 'DD.MM.YYYY'."""
         return date_obj.strftime("%d.%m.%Y")
 
     def find_next_weekday(start_date: date, weekday: int) -> date:
-        """Знаходить наступний вказаний день тижня."""
         days_ahead = weekday - start_date.weekday()
         if days_ahead <= 0:
             days_ahead += 7
         return start_date + timedelta(days=days_ahead)
 
     def adjust_for_weekend(birthday: date) -> date:
-        """Якщо день народження випадає на вихідний, переносимо на понеділок."""
         if birthday.weekday() >= 5:
-            return Birthday.find_next_weekday(birthday, 0)  # Понеділок
+            return Birthday.find_next_weekday(birthday, 0)
         return birthday
 
 
@@ -82,11 +83,11 @@ class Record:
                 return item
 
     def __str__(self):
-        if self.birthday is None:
-            return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
+        phones = '; '.join(p.value for p in self.phones)
+        if self.birthday:
+            return f"Contact name: {self.name.value}, phones: {phones}, birthday: {self.birthday.value}"
         else:
-            return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}, birthday: {Birthday.date_to_string(self.birthday.value)}"
-
+            return f"Contact name: {self.name.value}, phones: {phones}"
 
 class AddressBook(UserDict):
     def add_record(self, record: Record):
@@ -103,14 +104,17 @@ class AddressBook(UserDict):
         upcoming_birthdays = []
         today = date.today()
         days = 7
-        for name in self.data:
-            birthday_this_year = self.data[name].birthday.value.replace(year=today.year)
+        for name, record in self.data.items():
+            if not record.birthday:
+                continue
+            real_birthday_date = Birthday.string_to_date(record.birthday.value)
+            birthday_this_year = real_birthday_date.replace(year=today.year)
             if birthday_this_year < today:
                 birthday_this_year = birthday_this_year.replace(year=today.year + 1)
-            if 0 <= (birthday_this_year - today).days <= days:
-                birthday_this_year = Birthday.adjust_for_weekend(birthday_this_year)
-                congratulation_date_str = Birthday.date_to_string(birthday_this_year)
-                upcoming_birthdays.append({"name": name, "birthday": congratulation_date_str})
+            days_until = (birthday_this_year - today).days
+            if 0 <= days_until <= days:
+                congratulation_date = Birthday.adjust_for_weekend(birthday_this_year)
+                upcoming_birthdays.append({"name": name, "birthday": Birthday.date_to_string(congratulation_date)})
         return upcoming_birthdays
     
     def __str__(self):
